@@ -5,6 +5,8 @@ namespace DiscordHandler;
 use GuzzleHttp\Client;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
+use Illuminate\Support\Facades\Request as Request;
+use Auth;
 
 class DiscordHandler extends AbstractProcessingHandler
 {
@@ -56,13 +58,19 @@ class DiscordHandler extends AbstractProcessingHandler
         $content = [
             "embeds" => [
                 [
-                    "title" => $record['level_name'],
-                    "description" => $record['message'],
-                    "timestamp" => date('Y-m-d') . 'T' . date("H:i:s") . '.' . date("v") . 'Z',
+                    "title" => '[' . date_format($record['datetime'], 'Y-m-d H:i:s') . '] ' . $record['level_name'] . ' on ' . Request::url(),
+                    "description" => substr($record['message'], 0, 2048),
                     "color" => $this->levelColors[$record['level']],
                 ],
             ],
         ];
+
+        if (Auth::check()) {
+            $content["embeds"][0]["footer"] = [
+                "text" => 'USERID: ' . Auth::user()->id . ' | EMAIL: ' . Auth::user()->email,
+                "icon_url" => 'https://www.popularitas.com/wp-content/uploads/2018/04/user-hero-blue.png'
+            ];
+        }
 
         foreach ($this->webhooks as $webhook) {
             $this->client->request('POST', $webhook, [
